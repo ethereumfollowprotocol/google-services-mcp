@@ -1,126 +1,278 @@
-# Model Context Protocol (MCP) Server + Google OAuth
+# Meetings MCP Server
 
-This is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server that supports remote MCP connections, with Google OAuth built-in.
+A comprehensive Model Context Protocol (MCP) server that provides read-only access to Google Drive meeting transcripts and Google Calendar events. This server enables AI assistants to search through meeting documents, analyze transcripts, and access calendar information to provide intelligent meeting insights.
 
-You can deploy it to your own Cloudflare account, and after you create your own Google Cloud OAuth client app, you'll have a fully functional remote MCP server that you can build off. Users will be able to connect to your MCP server by signing in with their Google account.
+## Features
 
-You can use this as a reference example for how to integrate other OAuth providers with an MCP server deployed to Cloudflare, using the [`workers-oauth-provider` library](https://github.com/cloudflare/workers-oauth-provider).
+### 🗂️ Google Drive Integration
+- **Search Meeting Transcripts**: Full-text search across all meeting documents in a shared folder
+- **Get Meeting Content**: Retrieve complete transcript content from Google Docs
+- **List Recent Meetings**: Browse the most recently modified meeting documents
+- **Meeting Summaries**: Generate basic summaries of meeting transcripts
 
-The MCP server (powered by [Cloudflare Workers](https://developers.cloudflare.com/workers/)): 
+### 📅 Google Calendar Integration
+- **Upcoming Meetings**: View scheduled meetings with attendee counts and details
+- **Meeting Attendees**: Get detailed attendee information for specific meetings
+- **Date Range Search**: Find meetings within specific date ranges
+- **Historical Analysis**: Access past meeting data for trend analysis
 
-* Acts as OAuth _Server_ to your MCP clients
-* Acts as OAuth _Client_ to your _real_ OAuth server (in this case, Google)
+### 🚀 Performance & Security
+- **Intelligent Caching**: KV-based caching to minimize API calls and improve response times
+- **Read-Only Access**: All operations use read-only Google API scopes for maximum security
+- **OAuth 2.0 Authentication**: Secure authentication flow with Google OAuth
+- **Error Handling**: Comprehensive error handling with user-friendly messages
 
-## Getting Started
+## Prerequisites
 
-Clone the repo & install dependencies: `npm install`
+- Node.js 20 or higher
+- Cloudflare Workers account
+- Google Cloud Console project with API access
+- Google Drive folder with meeting transcripts
+- Google Calendar access
 
-### For Production
-Create a new [Google Cloud OAuth App](https://cloud.google.com/iam/docs/workforce-manage-oauth-app): 
-- For the Homepage URL, specify `https://mcp-google-oauth.<your-subdomain>.workers.dev`
-- For the Authorization callback URL, specify `https://mcp-google-oauth.<your-subdomain>.workers.dev/callback`
-- Note your Client ID and generate a Client secret. 
-- Set secrets via Wrangler
+## Setup
+
+### 1. Clone the Repository
+
 ```bash
-wrangler secret put GOOGLE_CLIENT_ID
-wrangler secret put GOOGLE_CLIENT_SECRET
-wrangler secret put COOKIE_ENCRYPTION_KEY # add any random string here e.g. openssl rand -hex 32
-wrangler secret put HOSTED_DOMAIN # optional: use this when restrict google account domain
+git clone https://github.com/your-username/meetings-mcp.git
+cd meetings-mcp
+npm install
 ```
-#### Set up a KV namespace
-- Create the KV namespace: 
-`wrangler kv:namespace create "OAUTH_KV"`
-- Update the Wrangler file with the KV ID
 
-#### Deploy & Test
-Deploy the MCP server to make it available on your workers.dev domain 
-` wrangler deploy`
+### 2. Google Cloud Console Setup
 
-Test the remote server using [Inspector](https://modelcontextprotocol.io/docs/tools/inspector): 
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the following APIs:
+   - Google Drive API
+   - Google Calendar API
+   - Google Docs API
+4. Create OAuth 2.0 credentials:
+   - Go to Credentials → Create Credentials → OAuth 2.0 Client ID
+   - Application type: Web application
+   - Authorized redirect URIs: `https://your-worker-domain.workers.dev/callback`
+
+### 3. Environment Configuration
+
+Update `wrangler.jsonc` with your configuration:
+
+```json
+{
+  "vars": {
+    "GOOGLE_CLIENT_ID": "your-google-client-id",
+    "GOOGLE_CLIENT_SECRET": "your-google-client-secret",
+    "COOKIE_ENCRYPTION_KEY": "your-32-byte-base64-key",
+    "GOOGLE_DRIVE_FOLDER_ID": "your-shared-folder-id",
+    "GOOGLE_CALENDAR_ID": "primary"
+  }
+}
+```
+
+### 4. Get Your Google Drive Folder ID
+
+1. Open Google Drive in your browser
+2. Navigate to your shared meetings folder
+3. The folder ID is the last part of the URL: `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
+
+### 5. Deploy to Cloudflare Workers
+
+```bash
+npm run deploy
+```
+
+## Development
+
+### Local Development
+
+```bash
+npm run dev
+```
+
+The server will be available at `http://localhost:8787`
+
+### Type Checking
+
+```bash
+npm run type-check
+```
+
+### Project Structure
 
 ```
-npx @modelcontextprotocol/inspector@latest
+src/
+├── index.ts                      # Main MCP server with all tools
+├── google-handler.ts             # OAuth authentication handler
+├── utils.ts                      # Utility functions
+├── workers-oauth-utils.ts        # OAuth helper functions
+├── services/
+│   ├── google-drive.service.ts   # Google Drive API wrapper
+│   ├── google-calendar.service.ts # Google Calendar API wrapper
+│   └── cache.service.ts          # KV caching utilities
+└── types/
+    └── env.d.ts                  # Environment type definitions
 ```
-Enter `https://mcp-google-oauth.<your-subdomain>.workers.dev/sse` and hit connect. Once you go through the authentication flow, you'll see the Tools working: 
 
-<img width="640" alt="image" src="https://github.com/user-attachments/assets/7973f392-0a9d-4712-b679-6dd23f824287" />
+## Available MCP Tools
 
-You now have a remote MCP server deployed! 
+### Drive Tools
 
-### Access Control
+#### `search_meeting_transcripts`
+Search across all meeting documents in the configured folder.
 
-This MCP server uses Google Cloud OAuth for authentication. All authenticated Google users can access basic tools like "add". When you restrict users with hosted domain, set `HOSTED_DOMAIN` env.
+**Parameters:**
+- `query` (string): Search query to find in meeting transcripts
+- `folderId` (string, optional): Google Drive folder ID to search in
 
-### Access the remote MCP server from Claude Desktop
-
-Open Claude Desktop and navigate to Settings -> Developer -> Edit Config. This opens the configuration file that controls which MCP servers Claude can access.
-
-Replace the content with the following configuration. Once you restart Claude Desktop, a browser window will open showing your OAuth login page. Complete the authentication flow to grant Claude access to your MCP server. After you grant access, the tools will become available for you to use. 
-
+**Example:**
+```json
+{
+  "query": "quarterly goals",
+  "folderId": "1A0n63cvNloB_h7c6SQpP0R8kzmZMOL9D"
+}
 ```
+
+#### `get_meeting_transcript`
+Retrieve the full content of a specific meeting transcript.
+
+**Parameters:**
+- `fileId` (string): Google Drive file ID of the meeting transcript
+
+#### `list_recent_meetings`
+List the most recently modified meeting documents.
+
+**Parameters:**
+- `folderId` (string, optional): Google Drive folder ID
+- `limit` (number, optional): Number of recent meetings to return (default: 10)
+
+### Calendar Tools
+
+#### `get_upcoming_meetings`
+Get upcoming meetings with details and attendee counts.
+
+**Parameters:**
+- `daysAhead` (number, optional): Number of days ahead to look for meetings (default: 7)
+- `calendarId` (string, optional): Google Calendar ID
+
+#### `get_meeting_attendees`
+Get detailed attendee information for a specific meeting.
+
+**Parameters:**
+- `eventId` (string): Google Calendar event ID
+- `calendarId` (string, optional): Google Calendar ID
+
+#### `search_meetings_by_date`
+Find meetings within a specific date range.
+
+**Parameters:**
+- `startDate` (string): Start date (YYYY-MM-DD)
+- `endDate` (string): End date (YYYY-MM-DD)
+- `calendarId` (string, optional): Google Calendar ID
+
+## Usage with Claude Desktop
+
+1. Add the MCP server to your Claude Desktop configuration:
+
+```json
 {
   "mcpServers": {
-    "math": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://mcp-google-oauth.<your-subdomain>.workers.dev/sse"
-      ]
+    "meetings": {
+      "command": "node",
+      "args": ["path/to/meetings-mcp"],
+      "env": {
+        "GOOGLE_CLIENT_ID": "your-client-id",
+        "GOOGLE_CLIENT_SECRET": "your-client-secret"
+      }
     }
   }
 }
 ```
 
-Once the Tools (under 🔨) show up in the interface, you can ask Claude to use them. For example: "Could you use the math tool to add 23 and 19?". Claude should invoke the tool and show the result generated by the MCP server.
+2. Restart Claude Desktop
+3. The meeting tools will be available in your Claude conversations
 
-### For Local Development
-If you'd like to iterate and test your MCP server, you can do so in local development. This will require you to create another OAuth App on Google Cloud: 
-- For the Homepage URL, specify `http://localhost:8788`
-- For the Authorization callback URL, specify `http://localhost:8788/callback`
-- Note your Client ID and generate a Client secret. 
-- Create a `.dev.vars` file in your project root with: 
+## API Rate Limits & Caching
+
+The server implements intelligent caching to minimize API calls:
+
+- **File Lists**: 5 minutes TTL
+- **File Content**: 1 hour TTL
+- **Calendar Events**: 5 minutes TTL
+- **File Metadata**: 10 minutes TTL
+
+## Security Considerations
+
+- All API operations use read-only scopes
+- OAuth tokens are securely stored and encrypted
+- No ability to modify documents or calendar events
+- All API calls are logged for audit purposes
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## Deployment
+
+### Automatic Deployment
+
+The project includes a GitHub Actions workflow that automatically deploys to Cloudflare Workers when you push to the main branch.
+
+**Required GitHub Secrets:**
+- `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token
+- `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
+
+### Manual Deployment
+
+```bash
+npm run deploy
 ```
-GOOGLE_CLIENT_ID=your_development_google_cloud_oauth_client_id
-GOOGLE_CLIENT_SECRET=your_development_google_cloud_oauth_client_secret
+
+## Troubleshooting
+
+### Common Issues
+
+1. **OAuth Redirect URI Mismatch**
+   - Ensure your redirect URI in Google Cloud Console matches your worker domain
+   - Format: `https://your-worker.workers.dev/callback`
+
+2. **Folder Not Found**
+   - Verify your `GOOGLE_DRIVE_FOLDER_ID` is correct
+   - Ensure the service account has access to the folder
+
+3. **API Rate Limits**
+   - The server implements caching to minimize API calls
+   - If you hit rate limits, increase cache TTL values
+
+4. **Authentication Issues**
+   - Re-authenticate if you've changed OAuth scopes
+   - Check that all required APIs are enabled in Google Cloud Console
+
+### Debug Mode
+
+For local development, you can enable debug logging by setting:
+
+```bash
+export DEBUG=meetings-mcp:*
 ```
 
-#### Develop & Test
-Run the server locally to make it available at `http://localhost:8788`
-`wrangler dev`
+## License
 
-To test the local server, enter `http://localhost:8788/sse` into Inspector and hit connect. Once you follow the prompts, you'll be able to "List Tools". 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-#### Using Claude and other MCP Clients
+## Support
 
-When using Claude to connect to your remote MCP server, you may see some error messages. This is because Claude Desktop doesn't yet support remote MCP servers, so it sometimes gets confused. To verify whether the MCP server is connected, hover over the 🔨 icon in the bottom right corner of Claude's interface. You should see your tools available there.
+For questions and support:
+- Open an issue on GitHub
+- Check the [troubleshooting section](#troubleshooting)
+- Review the [Google APIs documentation](https://developers.google.com/docs)
 
-#### Using Cursor and other MCP Clients
+## Acknowledgments
 
-To connect Cursor with your MCP server, choose `Type`: "Command" and in the `Command` field, combine the command and args fields into one (e.g. `npx mcp-remote https://<your-worker-name>.<your-subdomain>.workers.dev/sse`).
-
-Note that while Cursor supports HTTP+SSE servers, it doesn't support authentication, so you still need to use `mcp-remote` (and to use a STDIO server, not an HTTP one).
-
-You can connect your MCP server to other MCP clients like Windsurf by opening the client's configuration file, adding the same JSON that was used for the Claude setup, and restarting the MCP client.
-
-## How does it work? 
-
-#### OAuth Provider
-The OAuth Provider library serves as a complete OAuth 2.1 server implementation for Cloudflare Workers. It handles the complexities of the OAuth flow, including token issuance, validation, and management. In this project, it plays the dual role of:
-
-- Authenticating MCP clients that connect to your server
-- Managing the connection to Google Cloud's OAuth services
-- Securely storing tokens and authentication state in KV storage
-
-#### Durable MCP
-Durable MCP extends the base MCP functionality with Cloudflare's Durable Objects, providing:
-- Persistent state management for your MCP server
-- Secure storage of authentication context between requests
-- Access to authenticated user information via `this.props`
-- Support for conditional tool availability based on user identity
-
-#### MCP Remote
-The MCP Remote library enables your server to expose tools that can be invoked by MCP clients like the Inspector. It:
-- Defines the protocol for communication between clients and your server
-- Provides a structured way to define tools
-- Handles serialization and deserialization of requests and responses
-- Maintains the Server-Sent Events (SSE) connection between clients and your server
+- [Model Context Protocol](https://github.com/modelcontextprotocol/specification)
+- [Cloudflare Workers](https://workers.cloudflare.com/)
+- [Google APIs](https://developers.google.com/apis-explorer)
+- [Claude Desktop](https://claude.ai/desktop)
