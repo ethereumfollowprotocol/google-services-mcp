@@ -25,8 +25,8 @@ app.get("/authorize", async (c) => {
 	return renderApprovalDialog(c.req.raw, {
 		client: await c.env.OAUTH_PROVIDER.lookupClient(clientId),
 		server: {
-			description: "This MCP Server is a demo for Google OAuth.",
-			name: "Google OAuth Demo",
+			description: "This MCP Server provides read-only access to Google Drive meeting transcripts and Calendar events.",
+			name: "Meetings MCP",
 		},
 		state: { oauthReqInfo },
 	});
@@ -53,7 +53,7 @@ async function redirectToGoogle(
 				clientId: c.env.GOOGLE_CLIENT_ID,
 				hostedDomain: c.env.HOSTED_DOMAIN,
 				redirectUri: new URL("/callback", c.req.raw.url).href,
-				scope: "email profile",
+				scope: "email profile https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/calendar.readonly",
 				state: btoa(JSON.stringify(oauthReqInfo)),
 				upstreamUrl: "https://accounts.google.com/o/oauth2/v2/auth",
 			}),
