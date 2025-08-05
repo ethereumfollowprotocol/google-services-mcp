@@ -35,8 +35,8 @@ A comprehensive Model Context Protocol (MCP) server that provides read-only acce
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/meetings-mcp.git
-cd meetings-mcp
+git clone https://github.com/your-username/google-services-mcp.git
+cd google-services-mcp
 npm install
 ```
 
@@ -178,7 +178,7 @@ Find meetings within a specific date range.
   "mcpServers": {
     "meetings": {
       "command": "node",
-      "args": ["path/to/meetings-mcp"],
+      "args": ["path/to/google-services-mcp"],
       "env": {
         "GOOGLE_CLIENT_ID": "your-client-id",
         "GOOGLE_CLIENT_SECRET": "your-client-secret"
@@ -256,7 +256,7 @@ npm run deploy
 For local development, you can enable debug logging by setting:
 
 ```bash
-export DEBUG=meetings-mcp:*
+export DEBUG=google-services-mcp:*
 ```
 
 ## License

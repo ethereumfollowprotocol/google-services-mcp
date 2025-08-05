@@ -4,7 +4,7 @@
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "meetings-mcp",
+  "name": "google-services-mcp",
   "account_id": "82fd12894541c76286f928562ffa29fa",
   "main": "src/index.ts",
   "compatibility_date": "2025-03-10",
