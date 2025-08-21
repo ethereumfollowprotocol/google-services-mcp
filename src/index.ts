@@ -17,7 +17,7 @@ type Props = {
 
 export class MyMCP extends McpAgent<Env, Record<string, never>, Props> {
   server = new McpServer({
-    name: 'Meetings MCP',
+    name: 'Google Services MCP',
     version: '1.0.0',
     description: 'Access and analyze Google Drive meeting transcripts and Calendar events',
   })

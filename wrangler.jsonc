@@ -11,8 +11,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "GOOGLE_CLIENT_ID": "696940481865-bmklit82f96p6rc32gvlm5rpdhqfk5n0.apps.googleusercontent.com",
-    "GOOGLE_CLIENT_SECRET": "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",
-    "COOKIE_ENCRYPTION_KEY": "1MtEOeMRs7E66rW2dWuebvXFrEIfDIhleDdbUBltac8=",
     "GOOGLE_DRIVE_FOLDER_ID": "1A0n63cvNloB_h7c6SQpP0R8kzmZMOL9D",
     "GOOGLE_CALENDAR_ID": "primary"
   },
